@@ -78,8 +78,11 @@ int main(int argc, char *argv[]) {
 		fd = open(buf, O_RDONLY);
 		if (fd < 0) {
 			// TODO: 404
-			printf("open failed: %s\n", buf);
-			exit(1);
+			const char *fourOfour = "HTTP/1.1␣404␣OK\r\n"
+															"Server: Demo Web Server\r\n"
+															"Content-Length: <length>\r\n"
+															"Content-Type: <type>\r\n\r\n";
+			strcpy(buf, fourOfour);
 		}
 		while (1) {
 			bytes = read(fd, buf, BUF_SIZE); /* read from file */
