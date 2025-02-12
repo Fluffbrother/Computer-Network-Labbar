@@ -13,8 +13,11 @@
 #define BUF_SIZE 4096		 /* block transfer size */
 #define QUEUE_SIZE 10
 
-static void parse_request(char buf[BUF_SIZE]) {
-	char *path = strtok(buf, " ");
+static void parse_request(char buf[BUF_SIZE], char out_path[BUF_SIZE]) {
+	char buffer[BUF_SIZE];
+	memcpy(buffer, buf, BUF_SIZE);
+
+	char *path = strtok(buffer, " ");
 	path = strtok(NULL, " ");
 
 	assert(path[0] == '/');
@@ -23,7 +26,7 @@ static void parse_request(char buf[BUF_SIZE]) {
 	}
 
 	// "/index.html" -> "CURRENT_PATH/sample_website/index.html"
-	snprintf(buf, BUF_SIZE, "./sample_website%s", path);
+	snprintf(out_path, BUF_SIZE, "./sample_website%s", path);
 }
 
 int main(int argc, char *argv[]) {
@@ -60,7 +63,6 @@ int main(int argc, char *argv[]) {
 
 	/* Socket is now set up and bound. Wait for connection and process it. */
 	int fd, sa, bytes;
-	char buf[BUF_SIZE]; /* buffer for outgoing file */
 	while (1) {
 		sa = accept(socket_result, 0, 0); /* block for connection request */
 		if (sa < 0) {
@@ -68,30 +70,44 @@ int main(int argc, char *argv[]) {
 			exit(1);
 		}
 		/* read file name from socket */
+		char buf[BUF_SIZE];
 		read(sa, buf, BUF_SIZE);
 
 		/* Get and return the file. */
-		parse_request(buf);
-		printf("PATH: %s\n", buf);
+		char path[BUF_SIZE];
+		parse_request(buf, path);
 
 		/* open the file to be sent back */
-		fd = open(buf, O_RDONLY);
+		fd = open(path, O_RDONLY);
 		if (fd < 0) {
-			// TODO: 404
-			const char *fourOfour = "HTTP/1.1␣404␣OK\r\n"
-															"Server: Demo Web Server\r\n"
-															"Content-Length: <length>\r\n"
-															"Content-Type: <type>\r\n\r\n";
-			strcpy(buf, fourOfour);
-		}
-		while (1) {
-			bytes = read(fd, buf, BUF_SIZE); /* read from file */
-			if (bytes <= 0) {
-				break; /* check for end of file */
+			// 404
+			const char fourOfour[] = "HTTP/1.1 404 Not Found\r\n"
+															 "Server: Demo Web Server\r\n"
+															 "Content-Length: \r\n"
+															 "Content-Type: text/plain\r\n\r\n404 Not Found";
+			write(sa, fourOfour, sizeof(fourOfour) - 1);
+		} else {
+			// 200
+			const char great_success[] = "HTTP/1.1 200 Ok\r\n"
+																	 "Server: Demo Web Server\r\n"
+																	 "Content-Length: \r\n"
+																	 "Content-Type: text/html\r\n\r\n";
+			write(sa, great_success, sizeof(great_success) - 1);
+
+			char out_buffer[BUF_SIZE];
+			while (1) {
+				/* read from file */
+				bytes = read(fd, out_buffer, BUF_SIZE);
+				/* check for end of file */
+				if (bytes <= 0) {
+					break;
+				}
+				/* write bytes to socket */
+				write(sa, out_buffer, bytes);
 			}
-			write(sa, buf, bytes); /* write bytes to socket */
 		}
-		close(fd); /* close file */
-		close(sa); /* close connection */
+
+		close(fd);
+		close(sa);
 	}
 }
