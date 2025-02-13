@@ -12,6 +12,22 @@
 #define SERVER_PORT 8080 /* arbitrary, but client & server must agree */
 #define BUF_SIZE 4096		 /* block transfer size */
 #define QUEUE_SIZE 10
+#define BODY_MAX_SIZE 1024
+#define RESPONSE_MAX_SIZE 1024
+
+static void handle_response(int socket_descriptor, char *r_type, char *c_type,
+														char *body, long body_size) {
+	char result[RESPONSE_MAX_SIZE];
+	snprintf(result, RESPONSE_MAX_SIZE,
+					 "HTTP/1.1 %s\r\n"
+					 "Server: Web Server\r\n"
+					 "Content-Length: %li\r\n"
+					 "Content-Type: %s\r\n\r\n",
+					 r_type, body_size, c_type);
+	write(socket_descriptor, result, strlen(result));
+
+	write(socket_descriptor, body, body_size);
+}
 
 static void parse_request(char buf[BUF_SIZE], char out_path[BUF_SIZE]) {
 	char buffer[BUF_SIZE];
@@ -62,52 +78,55 @@ int main(int argc, char *argv[]) {
 	}
 
 	/* Socket is now set up and bound. Wait for connection and process it. */
-	int fd, sa, bytes;
 	while (1) {
-		sa = accept(socket_result, 0, 0); /* block for connection request */
-		if (sa < 0) {
+		int socket_descriptor =
+				accept(socket_result, 0, 0); /* block for connection request */
+		if (socket_descriptor < 0) {
 			printf("accept failed\n");
 			exit(1);
 		}
 		/* read file name from socket */
 		char buf[BUF_SIZE];
-		read(sa, buf, BUF_SIZE);
+		read(socket_descriptor, buf, BUF_SIZE);
 
 		/* Get and return the file. */
 		char path[BUF_SIZE];
 		parse_request(buf, path);
 
-		/* open the file to be sent back */
-		fd = open(path, O_RDONLY);
+		// open the file to be sent back
+		int fd = open(path, O_RDONLY);
 		if (fd < 0) {
 			// 404
-			const char fourOfour[] = "HTTP/1.1 404 Not Found\r\n"
-															 "Server: Demo Web Server\r\n"
-															 "Content-Length: \r\n"
-															 "Content-Type: text/plain\r\n\r\n404 Not Found";
-			write(sa, fourOfour, sizeof(fourOfour) - 1);
+			char body[] = "404 Not Found";
+			handle_response(socket_descriptor, "404 Not Found", "text/plain", body,
+											strlen(body));
 		} else {
 			// 200
-			const char great_success[] = "HTTP/1.1 200 Ok\r\n"
-																	 "Server: Demo Web Server\r\n"
-																	 "Content-Length: \r\n"
-																	 "Content-Type: text/html\r\n\r\n";
-			write(sa, great_success, sizeof(great_success) - 1);
-
-			char out_buffer[BUF_SIZE];
-			while (1) {
-				/* read from file */
-				bytes = read(fd, out_buffer, BUF_SIZE);
-				/* check for end of file */
-				if (bytes <= 0) {
-					break;
-				}
-				/* write bytes to socket */
-				write(sa, out_buffer, bytes);
+			char *type = "text/plain";
+			char *file_extension = strrchr(path, '.') + 1;
+			printf("E: %s\n", file_extension);
+			if (strcmp(file_extension, "html") == 0) {
+				type = "text/html";
+			} else if (strcmp(file_extension, "jpg") == 0) {
+				type = "image/jpeg";
+			} else if (strcmp(file_extension, "png") == 0) {
+				type = "image/png";
 			}
+
+			// Seek to the end to get the size in bytes
+			off_t body_size = lseek(fd, 0, SEEK_END);
+			// Go back to the start
+			lseek(fd, 0, SEEK_SET);
+			// Read whole file
+			char *body = malloc(body_size + 1);
+			read(fd, body, body_size);
+
+			handle_response(socket_descriptor, "200 OK", type, body, body_size);
+
+			free(body);
 		}
 
 		close(fd);
-		close(sa);
+		close(socket_descriptor);
 	}
 }
