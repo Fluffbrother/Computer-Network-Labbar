@@ -24,9 +24,9 @@ static void handle_response(int socket_descriptor, char *r_type, char *c_type,
 					 "Content-Length: %li\r\n"
 					 "Content-Type: %s\r\n\r\n",
 					 r_type, body_size, c_type);
-	write(socket_descriptor, result, strlen(result));
+	send(socket_descriptor, result, strlen(result), 0);
 
-	write(socket_descriptor, body, body_size);
+	send(socket_descriptor, body, body_size, 0);
 }
 
 static void parse_request(char buf[BUF_SIZE], char out_path[BUF_SIZE]) {
@@ -85,9 +85,15 @@ int main(int argc, char *argv[]) {
 			printf("accept failed\n");
 			exit(1);
 		}
+
 		/* read file name from socket */
+		struct sockaddr_in client_addr;
+		// "should be initialized to the size of the buffer associated with
+		// src_addr" - man 2 recv
+		socklen_t addr_len = sizeof(client_addr);
 		char buf[BUF_SIZE];
-		read(socket_descriptor, buf, BUF_SIZE);
+		recvfrom(socket_descriptor, buf, sizeof(buf), 0,
+						 (struct sockaddr *)&client_addr, &addr_len);
 
 		/* Get and return the file. */
 		char path[BUF_SIZE];
@@ -104,7 +110,6 @@ int main(int argc, char *argv[]) {
 			// 200
 			char *type = "text/plain";
 			char *file_extension = strrchr(path, '.') + 1;
-			printf("E: %s\n", file_extension);
 			if (strcmp(file_extension, "html") == 0) {
 				type = "text/html";
 			} else if (strcmp(file_extension, "jpg") == 0) {
