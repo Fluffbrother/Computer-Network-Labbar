@@ -16,6 +16,11 @@ CFLAGS = --std=c11 -g -Wextra -Wall \
 sim: $(obj)
 	$(CC) $(CFLAGS) -o $@ $^
 
+.PHONY: debug
+debug: CFLAGS += -DDEBUGGING=1
+debug: $(obj)
+	$(CC) $(CFLAGS) -o sim $^
+
 .PHONY: clean
 clean:
 	rm -f $(obj) sim

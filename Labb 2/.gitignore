@@ -1,0 +1,4 @@
+*.o
+sim
+compile_commands.json
+*gdb*
