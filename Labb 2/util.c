@@ -32,8 +32,8 @@ bool queue_is_empty(queue_t q) {
 queue_t queue_enqueue(queue_t q, void *data) {
 	queue_t new_node = calloc(1, sizeof(*new_node));
 	new_node->next = NULL;
-	new_node->data = calloc(1, sizeof(data));
-	memcpy(new_node->data, data, sizeof(data));
+	new_node->data = malloc(sizeof(&data));
+	memcpy(new_node->data, data, sizeof(&data));
 
 	queue_t last_node = queue_get_last_node(q);
 	if (last_node && q) {
