@@ -68,11 +68,8 @@ void A_input(struct pkt packet) {
 
 	const int checksum = hash(packet.payload);
 	const bool matches = checksum == packet.checksum;
-	if (packet.seqnum != seq || packet.acknum == NACK || !matches) {
-		// NACK/corrupt: Retransmit packet
-		debug("A In: retransmitting (NACK: %s, Corrupt: %s): %s\n",
-					btos(packet.acknum == NACK), btos(!matches), packet.payload);
-		send_packet(current_packet);
+	if (packet.seqnum != seq || !matches) {
+		// Corrupt/wrong seq number: Do nothing
 		return;
 	}
 
@@ -81,6 +78,7 @@ void A_input(struct pkt packet) {
 	///
 
 	debug("A In: ACK:ed\n");
+	stoptimer(A);
 	seq = (seq + 1) % 2;
 	free(current_packet);
 	current_packet = NULL;
