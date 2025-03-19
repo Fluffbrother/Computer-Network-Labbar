@@ -19,7 +19,6 @@
 #define DATA_SIZE 20
 #define NACK 0
 #define ACK 1
-#define TIMEOUT 10
 
 /** Simple hashing function that just sums all ascii characters in the string */
 int hash(char data[DATA_SIZE]);

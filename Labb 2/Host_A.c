@@ -13,9 +13,25 @@ static struct pkt *current_packet = NULL;
 static queue_t queue = NULL;
 static int seq = 0;
 
+// Time
+static float prev_time = 0;
+static float avg_round_trip_time = 0;
+static int round_trip_sum = 0;
+static int round_trip_times = 0;
+
+static void set_round_trip_time(void) {
+	round_trip_sum += (time - prev_time) * 2;
+
+	round_trip_times++;
+	avg_round_trip_time = (float)round_trip_sum / round_trip_times;
+}
+
 static inline void send_packet(struct pkt *packet) {
 	tolayer3(A, *packet);
-	starttimer(A, TIMEOUT);
+
+	// Round trip time
+	starttimer(A, avg_round_trip_time);
+	prev_time = time;
 }
 
 /* Called from layer 5, passed the data to be sent to other side */
@@ -35,6 +51,7 @@ void A_output(struct msg message) {
 	current_packet->seqnum = seq;
 	strncpy(current_packet->payload, message.data, DATA_SIZE);
 
+	set_round_trip_time();
 	send_packet(current_packet);
 }
 
@@ -47,7 +64,7 @@ void A_input(struct pkt packet) {
 		return;
 	}
 
-	stoptimer(A);
+	set_round_trip_time();
 
 	const int checksum = hash(packet.payload);
 	const bool matches = checksum == packet.checksum;

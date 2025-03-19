@@ -44,7 +44,6 @@ void B_input(struct pkt packet) {
 /* Called when B's timer goes off */
 void B_timerinterrupt() {
 	// no-op
-	debug("B: Timer interrupt\n");
 }
 
 /* The following routine will be called once (only) before any other */
