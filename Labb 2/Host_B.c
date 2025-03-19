@@ -20,23 +20,21 @@ void B_input(struct pkt packet) {
 	debug("B in: Received payload: %s, checksum matches: %s\n", packet.payload,
 				btos(matches));
 
-	if (matches) {
+	if (matches && packet.seqnum == seq) {
 		// Send ACK
 		debug("B in: Sending ACK!: Package-Seq: %i, Seq: %i\n", packet.seqnum, seq);
 		packet.acknum = ACK;
 		tolayer3(B, packet);
 
-		if (packet.seqnum == seq) {
-			// Send to layer 5
-			debug("B in: Sending to layer 5\n");
-			tolayer5(B, packet.payload);
+		// Send to layer 5
+		debug("B in: Sending to layer 5\n");
+		tolayer5(B, packet.payload);
 
-			seq = (seq + 1) % 2;
-		}
+		seq = (seq + 1) % 2;
 	} else {
-		// Send NACK
-		debug("B in: Checksum doesn't match, sending NACK\n");
-		packet.acknum = NACK;
+		// Send back
+		debug("B in: Checksum doesn't match or seqnum doesn't match\n");
+		packet.acknum = ACK;
 		tolayer3(B, packet);
 	}
 }
