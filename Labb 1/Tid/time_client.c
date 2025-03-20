@@ -12,7 +12,7 @@ int main() {
 	int socket_fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (socket_fd < 0) {
 		perror("Socket creation failed");
-		exit(EXIT_FAILURE);
+		exit(1);
 	}
 
 	// Setup server address structure
