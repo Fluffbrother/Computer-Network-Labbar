@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "node.h"
 #include "sim_engine.h"
@@ -28,6 +29,17 @@ void rtinit(struct distance_table *table, int node) {
 }
 
 void rtupdate(struct distance_table *table, int node, struct rtpkt *pkt) {
+	static bool updated = false; 
+	int send = pkt->sourceid;
+
+	for(int i = 0; i < 4; i++){
+		int new_cost = table->costs[send][node] + pkt->mincost[i];
+
+		if(new_cost < table->costs[send][node]){
+			table->costs[i][send] = new_cost;
+			updated = true;
+		}
+	}
 	// printdt(table, node);
 	debug("UPDATE: %i\n", node);
 }
