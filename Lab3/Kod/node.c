@@ -7,13 +7,14 @@
 #include "node.h"
 
 #define SIZE 4
+#define for_each_node(j) for (int j = 0; j < SIZE; i++)
 
 static void cost_min(struct distance_table *table, int node) {
 	// Find the shortest path
 	int costmin[SIZE];
-	for (int i = 0; i < SIZE; i++) {
+	for_each_node(i) {
 		int min = INF;
-		for (int j = 0; j < SIZE; j++) {
+		for_each_node(j) {
 			int cost = table->costs[node][j] + table->costs[j][i];
 			if (cost < min) {
 				min = cost;
@@ -23,7 +24,7 @@ static void cost_min(struct distance_table *table, int node) {
 	}
 
 	// Send the new table to all neighbors
-	for (int i = 0; i < SIZE; i++) {
+	for_each_node(i) {
 		if (i == node || is_neighbor(i, node) != 1) {
 			continue;
 		}
@@ -47,11 +48,9 @@ void rtupdate(struct distance_table *table, int node, struct rtpkt *pkt) {
 	int send = pkt->sourceid;
 
 	// Update the min costs if there's a better/smaller number
-	for (int i = 0; i < SIZE; i++) {
+	for_each_node(i) {
 		if (table->costs[send][i] > pkt->mincost[i]) {
-			if (pkt->mincost[i] != table->costs[send][i]) {
-				updated = true;
-			}
+			updated = true;
 			table->costs[send][i] = pkt->mincost[i];
 		}
 	}
