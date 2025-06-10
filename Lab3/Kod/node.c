@@ -1,68 +1,66 @@
-#include <stdio.h>
-#include <string.h>
+// Daniel Brynne
+// Erik Gunnar Reider
+
 #include <stdbool.h>
+#include <string.h>
 
 #include "node.h"
-#include "sim_engine.h"
-#include "util.h"
 
 #define SIZE 4
 
-void cost_min(struct distance_table *table, int node){
+static void cost_min(struct distance_table *table, int node) {
 	int costmin[SIZE];
-		for(int i = 0; i < SIZE; i++){
-			int min  = INF;
-			for(int j = 0; j < SIZE; j++){
-				int cost;
-				if(j == node){
-					cost = table->costs[node][i];
-				}
-				else{
-					cost = table->costs[node][j] + table->costs[j][i];
-				}
-				if(cost < min){
-					min = cost;
-				}
+	for (int i = 0; i < SIZE; i++) {
+		int min = INF;
+		for (int j = 0; j < SIZE; j++) {
+			int cost;
+			if (j == node) {
+				cost = table->costs[node][i];
+			} else {
+				cost = table->costs[node][j] + table->costs[j][i];
 			}
-			costmin[i] = min;
+			if (cost < min) {
+				min = cost;
+			}
 		}
-		for(int i = 0; i < SIZE; i++){
-			if (i == node || is_neighbor(i, node) != 1) {
-				continue;
-			}
-			struct rtpkt packet;
-			packet.sourceid = node;
-			packet.destid = i;
-			
-			for(int j = 0; j < SIZE; j++){
-				packet.mincost[j] = costmin[i];
-			}
-			tolayer2(packet);	
+		costmin[i] = min;
+	}
+
+	for (int i = 0; i < SIZE; i++) {
+		if (i == node || is_neighbor(i, node) != 1) {
+			continue;
 		}
+		struct rtpkt packet;
+		packet.sourceid = node;
+		packet.destid = i;
+		memcpy(packet.mincost, costmin, sizeof(costmin));
+
+		tolayer2(packet);
+	}
 }
 
 void rtinit(struct distance_table *table, int node) {
 	// Tables are already initialized
+	cost_min(table, node);
 	printdt(table, node);
-	cost_min(table, node);	
 }
 
 void rtupdate(struct distance_table *table, int node, struct rtpkt *pkt) {
-	bool updated = false; 
+	bool updated = false;
 	int send = pkt->sourceid;
 
-	for(int i = 0; i < SIZE; i++){
-		int new_cost = table->costs[send][node] + pkt->mincost[i];
-
-		if(new_cost < table->costs[send][node]){
-			table->costs[i][send] = new_cost;
-			updated = true;
+	for (int i = 0; i < SIZE; i++) {
+		if (table->costs[send][i] > pkt->mincost[i]) {
+			if (pkt->mincost[i] != table->costs[send][i]) {
+				updated = true;
+			}
+			table->costs[send][i] = pkt->mincost[i];
 		}
 	}
-	if(updated){
+
+	if (updated) {
 		cost_min(table, node);
 	}
-	// printdt(table, node);
-	debug("UPDATE: %i\n", node);
-}
 
+	printdt(table, node);
+}
